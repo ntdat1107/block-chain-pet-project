@@ -10,7 +10,7 @@ input {
   margin-top: 4px;
   padding: 8px;
   font-family: Arial, sans-serif;
-  border: 1px solid #ccc;
+  border: 1px solid var(--muted-border);
   border-radius: 8px;
 }
 
@@ -26,11 +26,11 @@ button {
 .btn-info {
   width: 100%;
   color: #fff;
-  background: #17a2b8;
+  background: linear-gradient(135deg, var(--accent-1) 0%, var(--accent-2) 100%);
 }
 
 .btn-info:hover:not(:disabled) {
-  background: #138496;
+  filter: brightness(0.95);
 }
 
 .btn-info:disabled {
@@ -46,9 +46,91 @@ h4 {
 .small {
   min-height: 40px;
   padding: 10px;
-  color: #555;
+  color: var(--muted);
   font-size: 0.9rem;
   white-space: pre-line;
-  background: #f9f9f9;
+  background: var(--input-bg);
   border-radius: 4px;
+}
+
+.message {
+  margin-bottom: 8px;
+  padding: 8px 10px;
+  border-radius: 6px;
+}
+.message.success {
+  color: #27ae60;
+  background: rgba(46, 204, 113, 0.12);
+}
+.message.error {
+  color: #c0392b;
+  background: rgba(231, 76, 60, 0.08);
+}
+
+.certificate-display {
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+  margin-top: 12px;
+}
+.certificate-card {
+  flex: 1;
+  padding: 12px;
+  background: var(--card-bg);
+  border-radius: 8px;
+}
+.cert-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px dashed var(--muted-border);
+}
+.cert-row label {
+  color: var(--muted);
+  font-weight: 600;
+}
+.cert-value {
+  font-weight: 600;
+}
+.monospace {
+  font-family: monospace;
+}
+
+.verification-section {
+  width: 260px;
+}
+.verification-status {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 8px;
+  border: 1px solid var(--muted-border);
+  border-radius: 6px;
+}
+.verification-status.verified {
+  background: rgba(46, 204, 113, 0.06);
+}
+.verification-status.unverified {
+  background: rgba(241, 196, 15, 0.04);
+}
+.status-icon {
+  font-size: 20px;
+}
+.status-details .status-text {
+  margin: 0;
+  font-weight: 600;
+}
+.status-details .status-time {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.small-link {
+  margin-left: 8px;
+  color: var(--accent-1);
+  font-weight: 600;
+  background: none;
+  border: none;
+  cursor: pointer;
 }

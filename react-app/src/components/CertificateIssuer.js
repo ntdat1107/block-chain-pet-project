@@ -1,6 +1,18 @@
 import React, { useState } from 'react';
 import './CertificateIssuer.css';
 import Web3Service from '../services/Web3Service';
+// Optional IPFS upload using web3.storage. Install with:
+// npm install web3.storage
+let Web3StorageClient = null;
+try {
+  // Lazy require so app doesn't crash if package isn't installed
+  // (During build, bundler will include it if present)
+  // eslint-disable-next-line import/no-extraneous-dependencies
+  const { Web3Storage } = require('web3.storage');
+  Web3StorageClient = Web3Storage;
+} catch (err) {
+  Web3StorageClient = null;
+}
 
 function CertificateIssuer() {
   const [formData, setFormData] = useState({
@@ -12,14 +24,6 @@ function CertificateIssuer() {
   });
   const [result, setResult] = useState('');
   const [loading, setLoading] = useState(false);
-
-  const handleInputChange = (e) => {
-    const { id, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [id.replace('input', '').charAt(0).toLowerCase() + id.slice('input'.length + 1)]: value,
-    }));
-  };
 
   const handleIssue = async () => {
     if (!Web3Service.getCurrentAccount()) {
@@ -38,7 +42,42 @@ function CertificateIssuer() {
     }
 
     setLoading(true);
-    setResult('Đang gửi giao dịch, vui lòng xác nhận trên MetaMask...');
+    setResult('Đang xử lý...');
+
+    // Attempt IPFS upload if token present and package installed
+    let ipfsHash = '';
+    const token = process.env.REACT_APP_WEB3_STORAGE_TOKEN;
+    if (token && Web3StorageClient) {
+      setResult('Đang upload dữ liệu chứng nhận lên IPFS...');
+      try {
+        const client = new Web3StorageClient({ token });
+        const metadata = {
+          studentName: formData.studentName,
+          studentEmailOrId: formData.studentEmail,
+          courseName: formData.courseName,
+          issueDate: formData.issueDate,
+          extraInfo: formData.extraInfo,
+          issuedAt: new Date().toISOString(),
+        };
+        const blob = new Blob([JSON.stringify(metadata)], { type: 'application/json' });
+        const file = new File([blob], 'certificate.json');
+        const cid = await client.put([file], { wrapWithDirectory: false });
+        ipfsHash = cid;
+        setResult(`Upload lên IPFS thành công. CID: ${cid}\nGửi giao dịch...`);
+      } catch (err) {
+        // Don't block issuance if IPFS fails; proceed with empty ipfsHash
+        console.warn('IPFS upload failed:', err);
+        setResult('Không thể upload lên IPFS, tiếp tục gửi giao dịch...');
+      }
+    } else if (token && !Web3StorageClient) {
+      setResult(
+        'REACT_APP_WEB3_STORAGE_TOKEN được cấu hình nhưng package web3.storage chưa được cài.'
+      );
+      setLoading(false);
+      return;
+    } else {
+      setResult('Không cấu hình IPFS, gửi giao dịch mà không có ipfsHash...');
+    }
 
     try {
       const response = await Web3Service.issueCertificate(
@@ -46,7 +85,8 @@ function CertificateIssuer() {
         formData.studentEmail,
         formData.courseName,
         formData.issueDate,
-        formData.extraInfo
+        formData.extraInfo,
+        ipfsHash
       );
 
       setResult(

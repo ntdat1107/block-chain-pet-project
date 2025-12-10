@@ -1,9 +1,9 @@
 .card {
   margin-bottom: 20px;
   padding: 20px;
-  background: #fff;
+  background: var(--card-bg);
   border-radius: 16px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--shadow);
 }
 
 h3 {
@@ -27,11 +27,11 @@ button {
 
 .btn-primary {
   color: #fff;
-  background: #007bff;
+  background: linear-gradient(135deg, var(--accent-1) 0%, var(--accent-2) 100%);
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: #0056b3;
+  filter: brightness(0.95);
 }
 
 .btn-primary:disabled {

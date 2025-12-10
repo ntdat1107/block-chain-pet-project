@@ -4,8 +4,17 @@ import Web3Service from '../services/Web3Service';
 
 function CertificateSearch() {
   const [certificateId, setCertificateId] = useState('');
-  const [result, setResult] = useState('');
+  const [certificate, setCertificate] = useState(null);
+  const [verificationStatus, setVerificationStatus] = useState(null);
+  const [qrCodeUrl, setQrCodeUrl] = useState('');
   const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
+
+  const generateQRCode = (id) => {
+    return `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(
+      `Chứng nhận ID: ${id} - Xác minh tại: ${window.location.origin}/verify/${id}`
+    )}`;
+  };
 
   const handleSearch = async () => {
     if (!Web3Service.getCurrentAccount()) {
@@ -19,32 +28,73 @@ function CertificateSearch() {
     }
 
     setLoading(true);
-    setResult('Đang tra cứu trên chuỗi khối...');
+    setMessage('Đang tra cứu...');
+    setCertificate(null);
 
     try {
-      const cert = await Web3Service.getCertificate(certificateId);
+      const cert = await Web3Service.getCertificate(parseInt(certificateId));
+      if (cert && cert[0]) {
+        const [
+          id,
+          studentName,
+          studentEmailOrId,
+          courseName,
+          issueDate,
+          extraInfo,
+          issuer,
+          ipfsHash,
+          isVerified,
+          timestamp,
+        ] = cert;
 
-      const text =
-        `ID: ${cert.id}\n` +
-        `Tên học viên: ${cert.studentName}\n` +
-        `Email/Mã HV: ${cert.studentEmailOrId}\n` +
-        `Khóa học: ${cert.courseName}\n` +
-        `Ngày cấp: ${cert.issueDate}\n` +
-        `Ghi chú: ${cert.extraInfo}\n` +
-        `Issuer (địa chỉ ví cấp): ${cert.issuer}`;
+        setCertificate({
+          id,
+          studentName,
+          studentEmailOrId,
+          courseName,
+          issueDate,
+          extraInfo,
+          issuer,
+          ipfsHash,
+          isVerified,
+          timestamp: new Date(timestamp * 1000).toLocaleString('vi-VN'),
+        });
 
-      setResult(text);
+        const status = await Web3Service.getCertificateVerificationStatus(parseInt(certificateId));
+        setVerificationStatus({
+          isVerified: status[0],
+          issuer: status[1],
+          timestamp: new Date(status[2] * 1000).toLocaleString('vi-VN'),
+        });
+
+        setQrCodeUrl(generateQRCode(certificateId));
+        setMessage('✅ Tìm thấy chứng nhận');
+      } else {
+        setMessage(`❌ Không tìm thấy chứng nhận với ID ${certificateId}.`);
+      }
     } catch (error) {
-      setResult(`Không tìm thấy chứng nhận hoặc lỗi: ${error.message}`);
+      setMessage(`❌ Lỗi: ${error.message || 'Không tìm thấy chứng nhận.'}`);
     } finally {
       setLoading(false);
     }
+  };
+
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text);
+    setMessage('✅ Đã sao chép vào clipboard');
+    setTimeout(() => setMessage(''), 2000);
   };
 
   return (
     <div className="col-6">
       <div className="card">
         <h3>Tra cứu chứng nhận</h3>
+
+        {message && (
+          <div className={`message ${message.startsWith('✅') ? 'success' : 'error'}`}>
+            {message}
+          </div>
+        )}
 
         <label>Mã chứng nhận (ID)</label>
         <input
@@ -59,10 +109,91 @@ function CertificateSearch() {
           {loading ? 'Đang tra cứu...' : 'Tra cứu'}
         </button>
 
-        <h4>Thông tin chứng nhận</h4>
-        <div id="searchResult" className="small">
-          {result}
-        </div>
+        {certificate && (
+          <div className="certificate-display">
+            <div className="certificate-card">
+              <div className="cert-row">
+                <label>ID Chứng nhận:</label>
+                <span className="cert-value">{certificate.id}</span>
+              </div>
+              <div className="cert-row">
+                <label>Tên Học viên:</label>
+                <span className="cert-value">{certificate.studentName}</span>
+              </div>
+              <div className="cert-row">
+                <label>Email/Mã HV:</label>
+                <span className="cert-value">{certificate.studentEmailOrId}</span>
+              </div>
+              <div className="cert-row">
+                <label>Tên Khóa học:</label>
+                <span className="cert-value">{certificate.courseName}</span>
+              </div>
+              <div className="cert-row">
+                <label>Ngày phát hành:</label>
+                <span className="cert-value">{certificate.issueDate}</span>
+              </div>
+              <div className="cert-row">
+                <label>Thông tin Bổ sung:</label>
+                <span className="cert-value">{certificate.extraInfo}</span>
+              </div>
+              <div className="cert-row">
+                <label>IPFS Hash:</label>
+                <span className="cert-value monospace">{certificate.ipfsHash || 'Chưa có'}</span>
+                {certificate.ipfsHash && (
+                  <button
+                    className="small-link"
+                    onClick={() =>
+                      window.open(`https://ipfs.io/ipfs/${certificate.ipfsHash}`, '_blank')
+                    }
+                  >
+                    Xem IPFS
+                  </button>
+                )}
+              </div>
+              <div className="cert-row">
+                <label>Địa chỉ Người phát hành:</label>
+                <span className="cert-value monospace">{certificate.issuer}</span>
+              </div>
+              <div className="cert-row">
+                <label>Thời gian Tạo:</label>
+                <span className="cert-value">{certificate.timestamp}</span>
+              </div>
+            </div>
+
+            <div className="verification-section">
+              <h4>Trạng thái xác minh</h4>
+              {verificationStatus && (
+                <div
+                  className={`verification-status ${
+                    verificationStatus.isVerified ? 'verified' : 'unverified'
+                  }`}
+                >
+                  <div className="status-icon">{verificationStatus.isVerified ? '✅' : '⏳'}</div>
+                  <div className="status-details">
+                    <p className="status-text">
+                      {verificationStatus.isVerified ? 'Đã xác minh' : 'Chưa được xác minh'}
+                    </p>
+                    <p className="status-time">Thời gian: {verificationStatus.timestamp}</p>
+                  </div>
+                </div>
+              )}
+
+              <div style={{ marginTop: 8 }}>
+                <button
+                  className="btn-primary"
+                  onClick={() => copyToClipboard(`Chứng nhận ID: ${certificate.id}`)}
+                >
+                  📋 Sao chép ID
+                </button>
+                {qrCodeUrl && (
+                  <div style={{ marginTop: 10 }}>
+                    <img src={qrCodeUrl} alt="QR" style={{ width: 160, height: 160 }} />
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

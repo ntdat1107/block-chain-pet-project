@@ -11,7 +11,7 @@ textarea {
   margin-top: 4px;
   padding: 8px;
   font-family: Arial, sans-serif;
-  border: 1px solid #ccc;
+  border: 1px solid var(--muted-border);
   border-radius: 8px;
 }
 
@@ -31,11 +31,11 @@ button {
 .btn-success {
   width: 100%;
   color: #fff;
-  background: #28a745;
+  background: linear-gradient(135deg, var(--accent-1) 0%, var(--accent-2) 100%);
 }
 
 .btn-success:hover:not(:disabled) {
-  background: #218838;
+  filter: brightness(0.95);
 }
 
 .btn-success:disabled {
@@ -51,9 +51,9 @@ h4 {
 .small {
   min-height: 40px;
   padding: 10px;
-  color: #555;
+  color: var(--muted);
   font-size: 0.9rem;
   white-space: pre-line;
-  background: #f9f9f9;
+  background: var(--input-bg);
   border-radius: 4px;
 }

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import './WalletConnect.css';
 import Web3Service from '../services/Web3Service';
 
-function WalletConnect() {
+function WalletConnect({ onAccountChange }) {
   const [status, setStatus] = useState('Chưa kết nối');
   const [account, setAccount] = useState(null);
 
@@ -29,6 +29,7 @@ function WalletConnect() {
       const connectedAccount = await Web3Service.connectWallet();
       setAccount(connectedAccount);
       setStatus(`Đã kết nối: ${connectedAccount}`);
+      if (typeof onAccountChange === 'function') onAccountChange(connectedAccount);
     } catch (error) {
       alert(error.message);
     }
