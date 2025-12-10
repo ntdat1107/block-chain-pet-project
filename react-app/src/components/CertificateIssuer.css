@@ -1,0 +1,59 @@
+label {
+  display: block;
+  margin-top: 8px;
+  font-weight: bold;
+}
+
+input,
+textarea {
+  box-sizing: border-box;
+  width: 100%;
+  margin-top: 4px;
+  padding: 8px;
+  font-family: Arial, sans-serif;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+}
+
+textarea {
+  resize: vertical;
+}
+
+button {
+  margin-top: 12px;
+  padding: 10px 16px;
+  font-weight: bold;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.btn-success {
+  width: 100%;
+  color: #fff;
+  background: #28a745;
+}
+
+.btn-success:hover:not(:disabled) {
+  background: #218838;
+}
+
+.btn-success:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+h4 {
+  margin-top: 20px;
+  margin-bottom: 10px;
+}
+
+.small {
+  min-height: 40px;
+  padding: 10px;
+  color: #555;
+  font-size: 0.9rem;
+  white-space: pre-line;
+  background: #f9f9f9;
+  border-radius: 4px;
+}
