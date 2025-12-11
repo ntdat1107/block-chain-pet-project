@@ -238,26 +238,61 @@ ${stats.auditLogs
       {/* Statistics Legend */}
       <div className="legend-section">
         <h4>📌 Giải thích</h4>
+
         <div className="legend-grid">
-          <div className="legend-item">
-            <span className="action-badge">Certificate Issued</span>
-            <span>Chứng nhận được phát hành</span>
-          </div>
-          <div className="legend-item">
-            <span className="action-badge">Certificate Verified</span>
-            <span>Chứng nhận được xác minh</span>
-          </div>
           <div className="legend-item">
             <span className="action-badge">User Added</span>
             <span>Người dùng mới được thêm</span>
           </div>
+
           <div className="legend-item">
             <span className="action-badge">User Role Updated</span>
             <span>Vai trò người dùng được cập nhật</span>
           </div>
+
           <div className="legend-item">
             <span className="action-badge">User Deactivated</span>
             <span>Người dùng bị vô hiệu hóa</span>
+          </div>
+
+          <div className="legend-item">
+            <span className="action-badge">User Reactivated</span>
+            <span>Người dùng được kích hoạt lại</span>
+          </div>
+
+          <div className="legend-item">
+            <span className="action-badge">Certificate Issued</span>
+            <span>Chứng nhận được phát hành</span>
+          </div>
+
+          <div className="legend-item">
+            <span className="action-badge">Certificate Verified</span>
+            <span>Chứng nhận được xác minh</span>
+          </div>
+
+          <div className="legend-item">
+            <span className="action-badge">Course Added</span>
+            <span>Khoá học mới được thêm</span>
+          </div>
+
+          <div className="legend-item">
+            <span className="action-badge">Course Deactivated</span>
+            <span>Khoá học bị vô hiệu hóa</span>
+          </div>
+
+          <div className="legend-item">
+            <span className="action-badge">Course Activated</span>
+            <span>Khoá học được kích hoạt lại</span>
+          </div>
+
+          <div className="legend-item">
+            <span className="action-badge">Teacher Assigned To Course</span>
+            <span>Giáo viên được gán vào khoá học</span>
+          </div>
+
+          <div className="legend-item">
+            <span className="action-badge">Teacher Revoked From Course</span>
+            <span>Giáo viên bị thu hồi khỏi khoá học</span>
           </div>
         </div>
       </div>
