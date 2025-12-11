@@ -6,6 +6,8 @@ import CertificateSearch from './components/CertificateSearch';
 import UserManagement from './components/UserManagement';
 import Statistics from './components/Statistics';
 import ShareVerify from './components/ShareVerify';
+import AdminDashboard from './components/AdminDashboard';
+import TeacherDashboard from './components/TeacherDashboard';
 import Web3Service from './services/Web3Service';
 // ThemeSwitcher removed
 
@@ -34,8 +36,15 @@ function App() {
 
   const ACTIONS_BY_ROLE = {
     NONE: ['Tìm kiếm chứng nhận'],
-    ADMIN: ['Phát hành', 'Tìm kiếm', 'Quản lý người dùng', 'Thống kê', 'Chia sẻ & Xác minh'],
-    TEACHER: ['Phát hành', 'Tìm kiếm', 'Chia sẻ & Xác minh'],
+    ADMIN: [
+      'Phát hành',
+      'Tìm kiếm',
+      'Quản lý người dùng',
+      'Bảng điều khiển Admin',
+      'Thống kê',
+      'Chia sẻ & Xác minh',
+    ],
+    TEACHER: ['Phát hành', 'Tìm kiếm', 'Bảng điều khiển Giáo viên', 'Chia sẻ & Xác minh'],
     STUDENT: ['Tìm kiếm', 'Chia sẻ & Xác minh'],
   };
 
@@ -113,7 +122,7 @@ function App() {
         >
           📊 Tổng quan
         </button>
-        {/* `Phát hành` accessible to Admin and Issuer roles */}
+        {/* `Phát hành` accessible to Admin and Teacher roles */}
         {(userRole === 1 || userRole === 2) && (
           <button
             className={`nav-btn ${activeTab === 'issue' ? 'active' : ''}`}
@@ -128,6 +137,24 @@ function App() {
         >
           🔎 Tìm kiếm
         </button>
+        {/* Admin Dashboard Tab */}
+        {isAdmin && (
+          <button
+            className={`nav-btn ${activeTab === 'admin-dashboard' ? 'active' : ''}`}
+            onClick={() => setActiveTab('admin-dashboard')}
+          >
+            👑 Bảng điều khiển
+          </button>
+        )}
+        {/* Teacher Dashboard Tab */}
+        {userRole === 2 && (
+          <button
+            className={`nav-btn ${activeTab === 'teacher-dashboard' ? 'active' : ''}`}
+            onClick={() => setActiveTab('teacher-dashboard')}
+          >
+            📚 Bảng điều khiển
+          </button>
+        )}
         {/* Share & Verify tab: hide for STUDENT role */}
         {(userRole === 1 || userRole === 2) && (
           <button
@@ -214,7 +241,19 @@ function App() {
                     <h3>Thống kê & Báo cáo</h3>
                     <p>Xem thống kê và xuất báo cáo hệ thống</p>
                   </div>
+                  <div className="feature-card">
+                    <div className="feature-icon">👑</div>
+                    <h3>Bảng điều khiển Admin</h3>
+                    <p>Xem tất cả chứng chỉ, người dùng, và môn học</p>
+                  </div>
                 </>
+              )}
+              {userRole === 2 && (
+                <div className="feature-card">
+                  <div className="feature-icon">📚</div>
+                  <h3>Bảng điều khiển Giáo viên</h3>
+                  <p>Xem các môn và chứng chỉ được gán cho bạn</p>
+                </div>
               )}
             </div>
           </section>
@@ -229,6 +268,14 @@ function App() {
         {activeTab === 'users' && isAdmin && <UserManagement account={account} isAdmin={isAdmin} />}
 
         {activeTab === 'stats' && isAdmin && <Statistics />}
+
+        {activeTab === 'admin-dashboard' && isAdmin && (
+          <AdminDashboard account={account} isAdmin={isAdmin} />
+        )}
+
+        {activeTab === 'teacher-dashboard' && userRole === 2 && (
+          <TeacherDashboard account={account} userRole={userRole} />
+        )}
       </div>
 
       <footer className="footer">

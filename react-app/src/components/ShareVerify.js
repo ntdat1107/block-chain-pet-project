@@ -10,6 +10,8 @@ function ShareVerify() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [shareUrl, setShareUrl] = useState('');
+  const [currentUser, setCurrentUser] = useState(null);
+  const [courseAssigned, setCourseAssigned] = useState(null); // null = checking, true/false = result
 
   // Generate QR Code
   const generateQRCode = (id) => {
@@ -18,6 +20,28 @@ function ShareVerify() {
     )}`;
     return qrUrl;
   };
+
+  // Load current user info on mount
+  React.useEffect(() => {
+    const loadUserInfo = async () => {
+      try {
+        const account = Web3Service.getCurrentAccount();
+        if (account) {
+          const user = await Web3Service.getUser(account);
+          if (user && user[0]) {
+            setCurrentUser({
+              address: user[0],
+              name: user[1],
+              role: user[2], // 0=NONE, 1=ADMIN, 2=TEACHER, 3=STUDENT
+            });
+          }
+        }
+      } catch (err) {
+        console.error('Error loading user info:', err);
+      }
+    };
+    loadUserInfo();
+  }, []);
 
   // Search certificate
   const handleSearchCertificate = async (e) => {
@@ -29,20 +53,23 @@ function ShareVerify() {
     }
 
     setLoading(true);
+    setCourseAssigned(null); // Reset assignment check
     try {
       const cert = await Web3Service.getCertificate(parseInt(certificateId));
       if (cert && cert[0]) {
+        // cert array: [0]id, [1]studentName, [2]studentEmailOrId, [3]courseId, [4]courseName, [5]issueDate, [6]extraInfo, [7]issuer, [8]ipfsHash, [9]isVerified, [10]timestamp
         setCertificate({
           id: cert[0],
           studentName: cert[1],
           studentEmailOrId: cert[2],
-          courseName: cert[3],
-          issueDate: cert[4],
-          extraInfo: cert[5],
-          issuer: cert[6],
-          ipfsHash: cert[7],
-          isVerified: cert[8],
-          timestamp: new Date(cert[9] * 1000).toLocaleString('vi-VN'),
+          courseId: cert[3],
+          courseName: cert[4],
+          issueDate: cert[5],
+          extraInfo: cert[6],
+          issuer: cert[7],
+          ipfsHash: cert[8],
+          isVerified: cert[9],
+          timestamp: new Date(cert[10] * 1000).toLocaleString('vi-VN'),
         });
 
         // Get verification status
@@ -53,6 +80,23 @@ function ShareVerify() {
           timestamp: new Date(status[2] * 1000).toLocaleString('vi-VN'),
         });
 
+        // Check if current user is a teacher and if course is assigned
+        if (currentUser && parseInt(currentUser.role) === 2) {
+          try {
+            const isAssigned = await Web3Service.isTeacherAssignedToCourse(
+              currentUser.address,
+              parseInt(cert[3])
+            );
+            setCourseAssigned(isAssigned);
+          } catch (err) {
+            console.error('Error checking course assignment:', err);
+            setCourseAssigned(false);
+          }
+        } else {
+          // Not a teacher or no teacher role, allow verify
+          setCourseAssigned(true);
+        }
+
         // Generate QR code
         const qr = generateQRCode(certificateId);
         setQrCodeUrl(qr);
@@ -62,11 +106,13 @@ function ShareVerify() {
         setMessage('❌ Không tìm thấy chứng nhận');
         setCertificate(null);
         setVerificationStatus(null);
+        setCourseAssigned(null);
       }
     } catch (error) {
       console.error('Error searching certificate:', error);
       setMessage(`❌ Lỗi: ${error.message}`);
       setCertificate(null);
+      setCourseAssigned(null);
     }
     setLoading(false);
   };
@@ -197,7 +243,7 @@ function ShareVerify() {
                   <span className="cert-value">{certificate.studentName}</span>
                 </div>
                 <div className="cert-row">
-                  <label>Email/ID Học viên:</label>
+                  <label>Địa chỉ Học viên:</label>
                   <span className="cert-value">{certificate.studentEmailOrId}</span>
                 </div>
                 <div className="cert-row">
@@ -271,8 +317,19 @@ function ShareVerify() {
               )}
 
               {!verificationStatus?.isVerified && (
-                <button className="verify-btn" onClick={handleVerifyCertificate} disabled={loading}>
-                  {loading ? '⏳ Đang xác minh...' : '🔏 Xác minh Ngay'}
+                <button
+                  className="verify-btn"
+                  onClick={handleVerifyCertificate}
+                  disabled={loading || courseAssigned === false}
+                  title={
+                    courseAssigned === false ? '❌ Môn học này chưa được phân công cho bạn' : ''
+                  }
+                >
+                  {loading
+                    ? '⏳ Đang xác minh...'
+                    : courseAssigned === false
+                    ? '❌ Không có quyền'
+                    : '🔏 Xác minh Ngay'}
                 </button>
               )}
             </div>

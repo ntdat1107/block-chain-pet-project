@@ -34,30 +34,19 @@ function CertificateSearch() {
     try {
       const cert = await Web3Service.getCertificate(parseInt(certificateId));
       if (cert && cert[0]) {
-        const [
-          id,
-          studentName,
-          studentEmailOrId,
-          courseName,
-          issueDate,
-          extraInfo,
-          issuer,
-          ipfsHash,
-          isVerified,
-          timestamp,
-        ] = cert;
-
+        // cert array: [0]id, [1]studentName, [2]studentEmailOrId, [3]courseId, [4]courseName, [5]issueDate, [6]extraInfo, [7]issuer, [8]ipfsHash, [9]isVerified, [10]timestamp
         setCertificate({
-          id,
-          studentName,
-          studentEmailOrId,
-          courseName,
-          issueDate,
-          extraInfo,
-          issuer,
-          ipfsHash,
-          isVerified,
-          timestamp: new Date(timestamp * 1000).toLocaleString('vi-VN'),
+          id: cert[0],
+          studentName: cert[1],
+          studentEmailOrId: cert[2],
+          courseId: cert[3],
+          courseName: cert[4],
+          issueDate: cert[5],
+          extraInfo: cert[6],
+          issuer: cert[7],
+          ipfsHash: cert[8],
+          isVerified: cert[9],
+          timestamp: new Date(cert[10] * 1000).toLocaleString('vi-VN'),
         });
 
         const status = await Web3Service.getCertificateVerificationStatus(parseInt(certificateId));
@@ -100,6 +89,7 @@ function CertificateSearch() {
         <input
           id="inputCertificateId"
           type="number"
+          placeholder="Nhập ID chứng nhận"
           min="1"
           value={certificateId}
           onChange={(e) => setCertificateId(e.target.value)}
@@ -121,7 +111,7 @@ function CertificateSearch() {
                 <span className="cert-value">{certificate.studentName}</span>
               </div>
               <div className="cert-row">
-                <label>Email/Mã HV:</label>
+                <label>Địa chỉ học viên:</label>
                 <span className="cert-value">{certificate.studentEmailOrId}</span>
               </div>
               <div className="cert-row">

@@ -16,14 +16,42 @@ try {
 
 function CertificateIssuer() {
   const [formData, setFormData] = useState({
-    studentName: '',
-    studentEmail: '',
+    studentAddress: '',
+    courseId: '',
     courseName: '',
     issueDate: '',
     extraInfo: '',
   });
+  const [courses, setCourses] = useState([]);
+  const [students, setStudents] = useState([]);
+  const [showStudentDropdown, setShowStudentDropdown] = useState(false);
   const [result, setResult] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Format address with ellipsis: 0x1234...5678
+  const formatAddressShort = (address) => {
+    if (!address || address.length < 10) return address;
+    return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  };
+
+  // Load all students when component mounts
+  React.useEffect(() => {
+    const loadStudents = async () => {
+      try {
+        const studentList = await Web3Service.getAllStudents();
+        setStudents(studentList);
+      } catch (err) {
+        console.error('Lỗi khi tải danh sách học viên:', err);
+        setStudents([]);
+      }
+    };
+    loadStudents();
+  }, []);
+
+  const handleSelectStudent = (address, name) => {
+    setFormData({ ...formData, studentAddress: address });
+    setShowStudentDropdown(false);
+  };
 
   const handleIssue = async () => {
     if (!Web3Service.getCurrentAccount()) {
@@ -31,12 +59,19 @@ function CertificateIssuer() {
       return;
     }
 
-    if (
-      !formData.studentName ||
-      !formData.studentEmail ||
-      !formData.courseName ||
-      !formData.issueDate
-    ) {
+    // Validate student address format
+    if (!formData.studentAddress) {
+      alert('Vui lòng nhập địa chỉ tài khoản học viên.');
+      return;
+    }
+
+    // Check if address is valid Ethereum address format
+    if (!/^0x[a-fA-F0-9]{40}$/.test(formData.studentAddress)) {
+      alert('Địa chỉ tài khoản không hợp lệ.');
+      return;
+    }
+
+    if (!formData.courseId || !formData.issueDate) {
       alert('Vui lòng nhập đầy đủ các trường bắt buộc.');
       return;
     }
@@ -52,8 +87,8 @@ function CertificateIssuer() {
       try {
         const client = new Web3StorageClient({ token });
         const metadata = {
-          studentName: formData.studentName,
-          studentEmailOrId: formData.studentEmail,
+          studentAddress: formData.studentAddress,
+          studentId: formData.studentId,
           courseName: formData.courseName,
           issueDate: formData.issueDate,
           extraInfo: formData.extraInfo,
@@ -81,9 +116,8 @@ function CertificateIssuer() {
 
     try {
       const response = await Web3Service.issueCertificate(
-        formData.studentName,
-        formData.studentEmail,
-        formData.courseName,
+        formData.studentAddress,
+        parseInt(formData.courseId, 10),
         formData.issueDate,
         formData.extraInfo,
         ipfsHash
@@ -97,8 +131,8 @@ function CertificateIssuer() {
 
       // Clear form
       setFormData({
-        studentName: '',
-        studentEmail: '',
+        studentAddress: '',
+        courseId: '',
         courseName: '',
         issueDate: '',
         extraInfo: '',
@@ -110,34 +144,109 @@ function CertificateIssuer() {
     }
   };
 
+  // Load all courses for dropdown (no pagination)
+  const loadAllCourses = async () => {
+    try {
+      const total = await Web3Service.getTotalCourses();
+      const res = await Web3Service.getCourses(1, total || 1);
+      const list = [];
+      for (let i = 0; i < res.ids.length; i++) {
+        if (res.ids[i] && res.ids[i] !== '0') {
+          // use isActive if available else fallback to true
+          list.push({
+            id: res.ids[i],
+            name: res.names[i],
+            isActive: res.isActive ? res.isActive[i] : true,
+          });
+        }
+      }
+      setCourses(list);
+    } catch (err) {
+      console.error('Lỗi khi tải danh sách môn:', err);
+      setCourses([]);
+    }
+  };
+
+  React.useEffect(() => {
+    loadAllCourses();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Close dropdown when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = (e) => {
+      const container = document.getElementById('studentDropdownContainer');
+      if (container && !container.contains(e.target)) {
+        setShowStudentDropdown(false);
+      }
+    };
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, []);
+
+  // compute filtered students based on input (address or name)
+  const filteredStudents = React.useMemo(() => {
+    const query = (formData.studentAddress || '').trim().toLowerCase();
+    if (!query) return students;
+    return students.filter((s) => {
+      const addr = (s.address || '').toLowerCase();
+      const name = (s.name || '').toLowerCase();
+      return addr.includes(query) || name.includes(query);
+    });
+  }, [students, formData.studentAddress]);
+
   return (
     <div className="col-6">
       <div className="card">
         <h3>Cấp chứng nhận mới</h3>
 
-        <label>Tên học viên</label>
-        <input
-          id="inputStudentName"
-          type="text"
-          value={formData.studentName}
-          onChange={(e) => setFormData({ ...formData, studentName: e.target.value })}
-        />
+        <label>Địa chỉ tài khoản học viên</label>
+        <div id="studentDropdownContainer" className="student-dropdown-container">
+          <input
+            id="inputStudentAddress"
+            type="text"
+            placeholder="Nhấp để chọn hoặc nhập địa chỉ 0x..."
+            value={formData.studentAddress}
+            onChange={(e) => setFormData({ ...formData, studentAddress: e.target.value })}
+            onFocus={() => setShowStudentDropdown(true)}
+          />
+          {showStudentDropdown && students.length > 0 && (
+            <div className="student-dropdown">
+              {filteredStudents.map((student) => (
+                <div
+                  key={student.address}
+                  className="student-dropdown-item"
+                  onClick={() => handleSelectStudent(student.address, student.name)}
+                >
+                  {formatAddressShort(student.address)} - {student.name}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
-        <label>Email / Mã học viên</label>
-        <input
-          id="inputStudentEmail"
-          type="text"
-          value={formData.studentEmail}
-          onChange={(e) => setFormData({ ...formData, studentEmail: e.target.value })}
-        />
-
-        <label>Tên khóa học</label>
-        <input
-          id="inputCourseName"
-          type="text"
-          value={formData.courseName}
-          onChange={(e) => setFormData({ ...formData, courseName: e.target.value })}
-        />
+        <label>Chọn môn học</label>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <select
+            value={formData.courseId}
+            onChange={(e) => {
+              const selected = courses.find((c) => String(c.id) === String(e.target.value));
+              setFormData({
+                ...formData,
+                courseId: e.target.value,
+                courseName: selected ? selected.name : '',
+              });
+            }}
+          >
+            <option value="">-- Chọn môn --</option>
+            {courses.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+          <div>{/* No pagination for course dropdown; all courses loaded above */}</div>
+        </div>
 
         <label>Ngày cấp (YYYY-MM-DD)</label>
         <input

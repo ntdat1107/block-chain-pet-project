@@ -8,6 +8,10 @@ function UserManagement({ account, isAdmin }) {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [userDetails, setUserDetails] = useState(null);
+  const [coursesForAssignment, setCoursesForAssignment] = useState([]);
+  const [assignedMap, setAssignedMap] = useState({});
+  const [assignmentPage, setAssignmentPage] = useState(1);
+  const [assignmentPageSize, setAssignmentPageSize] = useState(10);
 
   const ROLES = {
     0: 'NONE',
@@ -73,6 +77,66 @@ function UserManagement({ account, isAdmin }) {
     }
   };
 
+  // Load all courses for teacher assignment when viewing a teacher
+  React.useEffect(() => {
+    const loadForTeacher = async () => {
+      if (!userDetails || userDetails.role !== 'TEACHER') {
+        setAssignedMap({});
+        setCoursesForAssignment([]);
+        return;
+      }
+      try {
+        const total = await Web3Service.getTotalCourses();
+        const res = await Web3Service.getCourses(1, total || 1);
+        const list = [];
+        for (let i = 0; i < res.ids.length; i++) {
+          if (res.ids[i] && res.ids[i] !== '0') {
+            list.push({ id: res.ids[i], name: res.names[i], isActive: res.isActive[i] });
+          }
+        }
+        setCoursesForAssignment(list);
+        const map = {};
+        for (const c of list) {
+          try {
+            const assigned = await Web3Service.isTeacherAssignedToCourse(userDetails.address, c.id);
+            map[c.id] = assigned;
+          } catch (err) {
+            map[c.id] = false;
+          }
+        }
+        setAssignedMap(map);
+      } catch (err) {
+        console.error('Lỗi khi tải môn cho phân công:', err);
+        setCoursesForAssignment([]);
+        setAssignedMap({});
+      }
+    };
+    loadForTeacher();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userDetails]);
+
+  // whenever course list for assignment or selected user changes, reload assignments
+  React.useEffect(() => {
+    const loadAssignments = async () => {
+      if (!userDetails || userDetails.role !== 'TEACHER') {
+        setAssignedMap({});
+        return;
+      }
+      const map = {};
+      for (const c of coursesForAssignment) {
+        try {
+          const assigned = await Web3Service.isTeacherAssignedToCourse(userDetails.address, c.id);
+          map[c.id] = assigned;
+        } catch (err) {
+          map[c.id] = false;
+        }
+      }
+      setAssignedMap(map);
+    };
+    loadAssignments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [coursesForAssignment, userDetails]);
+
   // Update user role
   const handleUpdateRole = async (userAddress, newRole) => {
     setLoading(true);
@@ -115,6 +179,26 @@ function UserManagement({ account, isAdmin }) {
     } catch (error) {
       console.error('Error reactivating user:', error);
       setMessage(`❌ Lỗi: ${error.message}`);
+    }
+    setLoading(false);
+  };
+
+  // Course management moved to separate screen; assignment toggles below
+
+  const toggleTeacherAssignment = async (teacherAddr, courseId, currentlyAssigned) => {
+    setLoading(true);
+    try {
+      if (currentlyAssigned) {
+        await Web3Service.revokeTeacherFromCourse(teacherAddr, courseId);
+        setMessage('✅ Thu quyền giáo viên cho môn thành công');
+      } else {
+        await Web3Service.assignTeacherToCourse(teacherAddr, courseId);
+        setMessage('✅ Gán giáo viên cho môn thành công');
+      }
+      // refresh user details (assignments reloaded by effect)
+      loadUserDetails(teacherAddr);
+    } catch (err) {
+      setMessage('❌ Lỗi khi cập nhật quyền giáo viên: ' + err.message);
     }
     setLoading(false);
   };
@@ -260,6 +344,104 @@ function UserManagement({ account, isAdmin }) {
               </button>
             )}
           </div>
+
+          {userDetails.role === 'TEACHER' && (
+            <div className="teacher-assignments">
+              <h5>📝 Phân công Môn học cho Giáo viên</h5>
+              {coursesForAssignment.length === 0 ? (
+                <p>Không có môn học để hiển thị.</p>
+              ) : (
+                <>
+                  <div className="assign-table-wrapper">
+                    <table className="assign-table">
+                      <thead>
+                        <tr>
+                          <th>STT</th>
+                          <th>Mã môn</th>
+                          <th>Tên môn</th>
+                          <th>Trạng thái</th>
+                          <th>Đã phân công</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {coursesForAssignment
+                          .slice(
+                            (assignmentPage - 1) * assignmentPageSize,
+                            assignmentPage * assignmentPageSize
+                          )
+                          .map((c, idx) => (
+                            <tr key={c.id} className={c.isActive ? '' : 'inactive-course'}>
+                              <td>{(assignmentPage - 1) * assignmentPageSize + idx + 1}</td>
+                              <td className="mono">{c.id}</td>
+                              <td>{c.name}</td>
+                              <td>{c.isActive ? '✅ Hoạt động' : '❌ Không hoạt động'}</td>
+                              <td>
+                                <input
+                                  type="checkbox"
+                                  checked={!!assignedMap[c.id]}
+                                  onChange={() =>
+                                    toggleTeacherAssignment(
+                                      userDetails.address,
+                                      c.id,
+                                      !!assignedMap[c.id]
+                                    )
+                                  }
+                                />
+                              </td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="assign-pagination">
+                    <div className="page-controls">
+                      <button
+                        onClick={() => setAssignmentPage((p) => Math.max(1, p - 1))}
+                        disabled={assignmentPage === 1}
+                      >
+                        ‹ Trước
+                      </button>
+                      <span>
+                        Trang {assignmentPage} /{' '}
+                        {Math.max(1, Math.ceil(coursesForAssignment.length / assignmentPageSize))}
+                      </span>
+                      <button
+                        onClick={() =>
+                          setAssignmentPage((p) =>
+                            Math.min(
+                              Math.ceil(coursesForAssignment.length / assignmentPageSize),
+                              p + 1
+                            )
+                          )
+                        }
+                        disabled={
+                          assignmentPage >=
+                          Math.ceil(coursesForAssignment.length / assignmentPageSize)
+                        }
+                      >
+                        Sau ›
+                      </button>
+                    </div>
+                    <div className="page-size">
+                      <label>Hiển thị:</label>
+                      <select
+                        value={assignmentPageSize}
+                        onChange={(e) => {
+                          setAssignmentPageSize(parseInt(e.target.value, 10));
+                          setAssignmentPage(1);
+                        }}
+                      >
+                        <option value={5}>5</option>
+                        <option value={10}>10</option>
+                        <option value={20}>20</option>
+                      </select>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -278,6 +460,8 @@ function UserManagement({ account, isAdmin }) {
           </li>
         </ul>
       </div>
+
+      {/* Course management moved to a separate screen */}
     </div>
   );
 }
